@@ -1,0 +1,23 @@
+normal distribution, gaussian distribution (Important for exam)
+height, marks, measurement error
+Inverted bell shape curve
+paramenters (mue-mean and sigma^2-variance)
+middle is mean
+Symmetric around mean
+Uses probability distribution function(PDF)
+
+Fx(x) = 1/sigma*sqrt(2)
+mue+sigma ,mue+2sigma.....
+Find AUC
+68.2% : -1sd to +1sd
+95.4% : -2sd to +2sd
+99.7% : -3sd to +3sd
+
+
+
+standard normal distribution
+chi square, T distribution
+
+inferential statistics using sample data.
+
+Will come for final lab exam
