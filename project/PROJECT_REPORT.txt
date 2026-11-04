@@ -1,0 +1,726 @@
+LANDSLIDE SUSCEPTIBILITY CLASSIFICATION
+DETAILED PROJECT REPORT
+============================================================
+
+1. PROJECT SUMMARY
+------------------------------------------------------------
+
+This project is a machine-learning classification application for estimating
+whether environmental conditions are associated with a landslide. It includes
+a supplied dataset, data preparation and model-training logic, evaluation
+methods, visual analysis, and an interactive Streamlit web application.
+
+The application compares two supervised binary-classification models:
+
+1. Random Forest
+2. Logistic Regression
+
+The application uses the supplied original dataset in
+landslide_dataset.csv. It does not use landslide_datasetS.csv.
+SMOTE (Synthetic Minority Over-sampling Technique) is applied only to the
+training data and adds exactly 1,200 synthetic training rows. The test data and
+both CSV files are never augmented or overwritten by the application.
+
+Important scientific note:
+The active CSV is supplied project data. It does not contain the geographic
+coordinates, field-validation metadata, or GIS layers required for operational
+geological deployment. Results should therefore be treated as project-specific
+machine-learning results rather than a production warning system.
+
+
+2. PROJECT FILES AND RESPONSIBILITIES
+------------------------------------------------------------
+
+2.1 app.py
+
+This is the main Streamlit application. It contains:
+
+- Dataset loading and basic cleaning.
+- Train/test splitting.
+- Missing-value imputation.
+- SMOTE oversampling.
+- Random Forest and Logistic Regression pipelines.
+- Cross-validation.
+- Model evaluation metrics.
+- Statistical comparison methods.
+- Interactive charts and tables.
+- Interactive landslide prediction form.
+
+The application is started with:
+
+    streamlit run app.py
+
+
+2.2 generate_landslide_dataset.py
+
+This script creates a reproducible example dataset. It:
+
+- Uses NumPy random number generation.
+- Uses random seed 2026.
+- Generates 2,000 rows by default.
+- Creates environmental and soil-related features.
+- Calculates a nonlinear risk score.
+- Generates the binary Landslide target.
+- Inserts controlled missing values into feature columns.
+- Saves the result to generated_landslide_dataset.csv.
+
+The script is run with:
+
+    python generate_landslide_dataset.py
+
+Running it creates generated_landslide_dataset.csv using the same default seed
+and generation rules. It does not overwrite the supplied landslide_dataset.csv.
+
+
+2.3 landslide_dataset.csv
+
+This is the supplied original dataset used by the application.
+
+Current dataset facts:
+
+- Total rows: 3,200
+- Feature columns: 9
+- Target column: 1
+- Total columns: 10
+- Target class 0, No Landslide: 2,193 rows
+- Target class 1, Landslide: 1,007 rows
+- Missing values in each feature column: 20
+- Missing values in target column: 0
+
+The CSV contains the supplied original observations. SMOTE rows are created in
+memory during model training and are not written into this file.
+
+
+2.4 landslide_datasetS.csv
+
+This file is not used by the application. It is kept separate from the active
+dataset because it contains a different, fully SMOTE-generated dataset. The
+application reads only landslide_dataset.csv.
+
+
+2.5 requirements.txt
+
+This file lists the Python packages required to run the project:
+
+- streamlit
+- pandas
+- numpy
+- matplotlib
+- seaborn
+- scikit-learn
+- imbalanced-learn
+
+The imbalanced-learn package provides SMOTE and its compatible pipeline
+implementation.
+
+
+2.6 README.md
+
+This is the general project documentation. It describes:
+
+- Project objectives.
+- Dataset columns.
+- Machine-learning models.
+- Evaluation metrics.
+- Application pages.
+- Installation and deployment.
+- Limitations and future improvements.
+
+
+2.7 PROJECT_REPORT.txt
+
+This file is the detailed report describing the full project implementation,
+data, preprocessing, model training, evaluation, and application behavior.
+
+
+2.8 __pycache__ directory
+
+This directory is automatically created by Python and stores compiled bytecode
+files. It is not part of the machine-learning workflow and is not required to
+understand or run the project.
+
+
+3. DATASET DESCRIPTION
+------------------------------------------------------------
+
+The data represents environmental conditions that may influence landslide
+susceptibility. The active CSV is the supplied project dataset. The generator
+script documents a separate reproducible example-data process and does not
+overwrite the active CSV.
+
+3.1 Numeric environmental features
+
+Rainfall_mm
+    Simulated rainfall in millimeters. Values are generated from a gamma
+    distribution, shifted upward, and clipped to the range 40 to 450.
+
+Slope_Angle
+    Simulated slope angle. It is generated from a normal distribution and
+    adjusted using rainfall. Values are clipped to the range 3 to 70 degrees.
+
+Soil_Saturation
+    Simulated soil saturation between 0.01 and 1.0. It is correlated with
+    rainfall and includes random variation.
+
+Vegetation_Cover
+    Simulated vegetation coverage between 0.05 and 1.0. It generally decreases
+    as slope and rainfall increase, with random variation.
+
+Earthquake_Activity
+    Simulated earthquake activity generated from a lognormal distribution and
+    clipped to the range 0.01 to 12.
+
+Proximity_to_Water
+    Simulated proximity-to-water measurement. It is generated from a gamma
+    distribution and clipped to the range 0.02 to 6.
+
+
+3.2 Soil-type indicator features
+
+The generator first chooses one soil type for each observation:
+
+- Gravel: approximately 30 percent
+- Sand: approximately 40 percent
+- Silt: approximately 30 percent
+
+The categorical value is converted into three binary indicator columns:
+
+- Soil_Type_Gravel
+- Soil_Type_Sand
+- Soil_Type_Silt
+
+Only one of these indicators is normally one for an observation, while the
+other two are zero. The soil type also contributes to the simulated risk score:
+
+- Sand effect: +0.28
+- Silt effect: +0.12
+- Gravel effect: -0.08
+
+
+3.3 Target column
+
+Landslide is the binary target:
+
+- 0 means No Landslide
+- 1 means Landslide
+
+The target is generated from a nonlinear susceptibility score rather than
+being sampled independently of the environmental features.
+
+
+4. DATA GENERATION METHOD
+------------------------------------------------------------
+
+The generator uses random seed 2026 for reproducibility.
+
+The following standardized component scores are calculated:
+
+    rain_score = (Rainfall_mm - 170) / 75
+    slope_score = (Slope_Angle - 28) / 14
+    saturation_score = (Soil_Saturation - 0.55) / 0.22
+    vegetation_score = (Vegetation_Cover - 0.50) / 0.22
+    earthquake_score = (Earthquake_Activity - 2.5) / 2.0
+    water_score = (Proximity_to_Water - 1.4) / 1.1
+
+The nonlinear risk score is:
+
+    risk_score =
+        0.75 * rain_score
+      + 0.80 * slope_score
+      + 0.85 * saturation_score
+      - 0.62 * vegetation_score
+      + 0.28 * earthquake_score
+      + 0.22 * water_score
+      + 0.48 * rain_score * saturation_score
+      + 0.38 * slope_score * saturation_score
+      + soil_effect
+
+The median risk score is used as the classification threshold. Random noise
+with a standard deviation of 0.22 is added to the risk score. An observation
+is labeled Landslide = 1 when its noisy score exceeds the threshold; otherwise
+it is labeled Landslide = 0.
+
+This approach creates a learnable but non-perfect classification problem.
+
+
+5. DATA LOADING AND CLEANING
+------------------------------------------------------------
+
+The load_data function in app.py performs the first preprocessing stage.
+
+Step 1: Read the CSV
+
+    pandas.read_csv("landslide_dataset.csv")
+
+Step 2: Replace invalid numeric values
+
+Positive and negative infinity values are replaced with NaN.
+
+Step 3: Remove rows with missing targets
+
+Rows with a missing Landslide target are removed because a supervised model
+cannot train on an unknown label.
+
+Step 4: Remove duplicate rows
+
+Duplicate observations are removed and the DataFrame index is reset.
+
+Step 5: Convert the target to integer type
+
+The Landslide column is converted to integer values so the target is represented
+as binary numeric classes.
+
+The feature missing values are intentionally retained until the model pipeline
+performs imputation. This avoids applying statistics calculated from the full
+dataset before the train/test split.
+
+
+6. TRAIN/TEST SPLIT
+------------------------------------------------------------
+
+The target and features are separated as follows:
+
+    X = all columns except Landslide
+    y = Landslide
+
+The data is divided using:
+
+- 80 percent training data
+- 20 percent test data
+- random_state = 42
+- stratify = y
+
+For the current 3,200-row dataset:
+
+- Original training rows: 2,560
+- Held-out test rows: 640
+- Training class 0: 1,754
+- Training class 1: 806
+
+Stratification keeps the class proportions similar between the training and
+test partitions.
+
+The held-out test set is kept untouched for final evaluation. It does not
+receive SMOTE samples and is not used to calculate imputation statistics.
+
+
+7. MISSING-VALUE IMPUTATION
+------------------------------------------------------------
+
+Each model uses a SimpleImputer with:
+
+    strategy = "median"
+
+The median is calculated from the relevant training data and is used to replace
+missing feature values. Median imputation is robust to extreme values and is
+appropriate for the numeric environmental variables.
+
+Imputation occurs inside the model pipeline. This is important because the
+imputer is fitted separately within each cross-validation training fold,
+reducing the risk of information leakage.
+
+
+8. SMOTE DATA AUGMENTATION
+------------------------------------------------------------
+
+SMOTE is used to create synthetic observations for the minority class.
+
+The project intentionally adds exactly 1,200 synthetic rows, controlled by:
+
+    SMOTE_EXTRA_SAMPLES = 1200
+
+The smote_strategy function:
+
+1. Counts the two target classes in the training data.
+2. Identifies the minority class.
+3. Requests a final minority-class size equal to the original minority count
+   plus 1,200.
+
+For the current split, the minority class is class 1:
+
+- Original class 0 training rows: 1,754
+- Original class 1 training rows: 806
+- Synthetic class 1 rows: 1,200
+- Final class 0 rows after SMOTE: 1,754
+- Final class 1 rows after SMOTE: 2,006
+- Effective training rows after SMOTE: 3,760
+
+SMOTE rows are generated in memory. They are never appended to the CSV and
+never added to the held-out test set.
+
+The pipeline order is:
+
+    imputer -> SMOTE -> optional scaler -> classifier
+
+The imputer runs before SMOTE because SMOTE requires complete numeric feature
+values. SMOTE is placed inside the imblearn pipeline so it runs only on the
+training portion of each cross-validation fold.
+
+SMOTE random_state is 42 for reproducibility.
+
+
+9. MODEL 1: RANDOM FOREST
+------------------------------------------------------------
+
+The Random Forest pipeline contains:
+
+1. Median SimpleImputer
+2. SMOTE
+3. RandomForestClassifier
+
+Random Forest configuration:
+
+- n_estimators = 300
+- max_depth = 8
+- min_samples_leaf = 5
+- max_features = "sqrt"
+- class_weight = "balanced"
+- random_state = 42
+
+The model creates an ensemble of decision trees. The depth and minimum leaf
+size limit model complexity and help reduce overfitting. The balanced class
+weight setting gives additional attention to class balance.
+
+The trained Random Forest is also used to calculate feature importance.
+
+
+10. MODEL 2: LOGISTIC REGRESSION
+------------------------------------------------------------
+
+The Logistic Regression pipeline contains:
+
+1. Median SimpleImputer
+2. SMOTE
+3. RobustScaler
+4. LogisticRegression
+
+Logistic Regression configuration:
+
+- C = 0.3
+- max_iter = 1000
+- random_state = 42
+
+RobustScaler scales features using robust statistics such as the median and
+interquartile range. This is useful when numeric features have different units
+or contain extreme values.
+
+Logistic Regression serves as a linear baseline model for comparison with the
+nonlinear Random Forest model.
+
+
+11. CROSS-VALIDATION
+------------------------------------------------------------
+
+The application uses StratifiedKFold cross-validation:
+
+- Number of folds: 5
+- shuffle = True
+- random_state = 42
+- scoring = accuracy
+
+Cross-validation is performed on the original training split. Because the
+models are imblearn pipelines, imputation and SMOTE are refitted inside every
+cross-validation training fold. The validation fold remains separate from the
+SMOTE operation.
+
+The application reports:
+
+- CV Accuracy Mean
+- CV Accuracy Std
+
+
+12. EVALUATION METRICS
+------------------------------------------------------------
+
+The final models are evaluated on the untouched 400-row test set.
+
+Accuracy
+    The proportion of test observations classified correctly.
+
+Precision
+    Among observations predicted as landslides, the proportion that are actual
+    landslides.
+
+Recall
+    Among actual landslide observations, the proportion detected by the model.
+
+F1 Score
+    The harmonic mean of precision and recall.
+
+ROC-AUC
+    Measures how well the probability scores separate the two classes across
+    classification thresholds.
+
+Confusion matrix
+    Displays true negatives, false positives, false negatives, and true
+    positives.
+
+Classification report
+    Displays per-class precision, recall, F1 score, and support.
+
+
+13. VERIFIED PERFORMANCE RESULT
+------------------------------------------------------------
+
+The following results were measured using the supplied 3,200-row dataset, the
+fixed random seeds, the 80/20 split, and exactly 1,200 SMOTE rows.
+
+Random Forest:
+
+- Held-out accuracy: 0.953125, or 95.31 percent
+- Held-out ROC-AUC: approximately 0.9895
+- Five-fold CV mean accuracy: approximately 0.9523
+
+Logistic Regression:
+
+- Held-out accuracy: 0.9515625, or 95.16 percent
+- Held-out ROC-AUC: approximately 0.9902
+- Five-fold CV mean accuracy: approximately 0.9609
+
+Both measured held-out accuracies are approximately within the requested
+92-to-95-percent target. Random Forest is 0.31 percentage points above the
+upper boundary, while Logistic Regression is inside the target range. Results
+can change if the dataset, split seed, model settings, or library versions are
+changed.
+
+These are results on the supplied project dataset and should not be interpreted
+as real-world geological accuracy.
+
+
+14. STATISTICAL COMPARISON
+------------------------------------------------------------
+
+The application compares Logistic Regression and Random Forest on the same
+held-out test rows.
+
+Observed accuracy difference:
+
+    Random Forest accuracy - Logistic Regression accuracy
+
+Bootstrap confidence interval:
+
+- 5,000 bootstrap resamples
+- 95 percent percentile interval
+- random_state = 42
+
+Paired permutation test:
+
+- 10,000 random sign permutations
+- Uses paired correct/incorrect outcomes for the same test observations
+- Includes a +1 correction in the numerator and denominator
+
+The statistical section reports whether the observed difference is statistically
+significant at the 5 percent level. An interval containing zero or a p-value
+greater than or equal to 0.05 means that the observed difference is not
+conclusive evidence of a population-level performance improvement.
+
+The application also calculates a 5,000-resample bootstrap interval for the
+selected model's accuracy.
+
+
+15. STREAMLIT USER INTERFACE
+------------------------------------------------------------
+
+The application has the following pages.
+
+15.1 Dashboard
+
+Displays:
+
+- Total sample count.
+- Number of features.
+- Landslide count.
+- Non-landslide count.
+- Original training size.
+- Effective SMOTE training size.
+- Untouched test size.
+- Dataset preview.
+- Target distribution chart.
+- Correlation matrix.
+- Missing-value and unique-value summary.
+
+15.2 Model Comparison
+
+Displays:
+
+- Accuracy.
+- Precision.
+- Recall.
+- F1 score.
+- ROC-AUC.
+- Cross-validation mean accuracy.
+- Cross-validation standard deviation.
+- Bar chart comparing models.
+- Classification report for the selected model.
+- Bootstrap accuracy interval.
+
+15.3 Statistical Evaluation
+
+Displays:
+
+- Random Forest minus Logistic Regression accuracy difference.
+- Bootstrap confidence interval.
+- Paired permutation p-value.
+- Interpretation of the statistical comparison.
+
+15.4 Confusion Matrices
+
+Displays an annotated confusion matrix for either model, with labels:
+
+- No Landslide
+- Landslide
+
+15.5 ROC Curves
+
+Displays the ROC curve for each model and its AUC.
+
+15.6 Feature Importance
+
+Displays Random Forest feature importance in a table and horizontal bar chart.
+
+15.7 Predict Susceptibility
+
+Allows the user to enter:
+
+- Rainfall.
+- Slope angle.
+- Soil saturation.
+- Vegetation cover.
+- Earthquake activity.
+- Proximity to water.
+- Soil type.
+
+The selected model returns:
+
+- LANDSLIDE or NO LANDSLIDE.
+- Estimated landslide probability.
+- A probability progress bar.
+- Illustrative Low, Moderate, or High susceptibility category.
+- Input-value table.
+
+The Low/Moderate/High thresholds are:
+
+- Low: probability below 0.33
+- Moderate: probability from 0.33 through below 0.66
+- High: probability 0.66 or higher
+
+These categories are illustrative and are not official geological hazard
+ratings.
+
+15.8 Dataset
+
+Displays:
+
+- Dataset shape.
+- Column names and data types.
+- Missing-value counts.
+- Unique-value counts.
+- IQR-based outlier counts.
+- Descriptive statistics.
+- Duplicate-row count.
+- Full dataset table.
+
+
+16. REPRODUCIBILITY
+------------------------------------------------------------
+
+The project uses fixed random seeds:
+
+- Dataset generation seed: 2026
+- Train/test split seed: 42
+- SMOTE seed: 42
+- Model seeds: 42
+- Cross-validation seed: 42
+- Bootstrap and permutation seed: 42
+
+To reproduce the base CSV:
+
+    python generate_landslide_dataset.py
+
+To install dependencies:
+
+    pip install -r requirements.txt
+
+To launch the application:
+
+    streamlit run app.py
+
+The exact metric values may still vary across operating systems, package
+versions, and changes to the dataset or source code.
+
+
+17. TECHNOLOGY STACK
+------------------------------------------------------------
+
+Programming language:
+
+- Python
+
+Data processing:
+
+- pandas
+- NumPy
+
+Machine learning:
+
+- scikit-learn
+- imbalanced-learn
+
+Visualization:
+
+- Matplotlib
+- Seaborn
+
+Web interface:
+
+- Streamlit
+
+
+18. LIMITATIONS
+------------------------------------------------------------
+
+1. The dataset is simulated rather than collected from field surveys.
+2. The project does not include latitude, longitude, elevation, geology maps,
+   satellite imagery, or GIS raster layers.
+3. The supplied data may not represent measured regional statistics.
+4. The reported accuracy describes this supplied dataset and fixed split.
+5. Synthetic SMOTE rows can improve learning balance but do not add independent
+   real-world evidence.
+6. Model probabilities are not calibrated geological risk probabilities.
+7. The Low, Moderate, and High labels are illustrative.
+8. Real landslide susceptibility mapping requires spatial validation and
+   independently collected observations.
+9. A random train/test split may be less appropriate than spatial or
+   region-based validation for geographic deployment.
+
+
+19. RECOMMENDED FUTURE WORK
+------------------------------------------------------------
+
+- Replace the simulated data with validated georeferenced observations.
+- Add elevation, aspect, land cover, lithology, fault distance, drainage, and
+  digital elevation model features.
+- Use spatial train/test splitting to test geographic generalization.
+- Tune model hyperparameters using nested cross-validation.
+- Compare additional models such as gradient boosting and calibrated models.
+- Calibrate predicted probabilities.
+- Add explainability methods such as permutation importance or SHAP.
+- Add automated data-quality and model-performance tests.
+- Track dataset versions and model versions.
+- Deploy with monitoring for data drift and performance drift.
+
+
+20. CONCLUSION
+------------------------------------------------------------
+
+This project implements a complete reproducible machine-learning workflow for
+landslide susceptibility classification. The workflow begins with a 3,200-row
+supplied dataset, cleans invalid records, separates the target,
+performs a stratified 80/20 split, imputes missing feature values, generates
+exactly 1,200 SMOTE training rows, trains two models, evaluates them on an
+untouched test set, and presents the results through Streamlit.
+
+The verified held-out accuracy is 95.31 percent for Random Forest and
+95.16 percent for Logistic Regression under the current fixed configuration
+using the supplied original CSV. The project's data and validation limitations
+must be considered before making any real-world geological decisions.
